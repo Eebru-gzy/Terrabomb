@@ -1,54 +1,72 @@
-provider "aws" {
-  # region     = "eu-west-3"
-  # access_key = "AKIAWYCB7GEIX5EN7LYV"
-  # secret_key = "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"
-}
+provider "aws" {}
 
-variable "cidr_blocks" {
-  # default = ""
-  description = "List of CIDR blocks and name to use for the VPC and subnet"
-  type = list(object({
-    cidr_block = string
-    name       = string
-  }))
-}
+variable "vpc_cidr_block" {}
+variable "subnet_cidr_block" {}
+variable "avail_zone" {}
+variable "env_prefix" {}
 
-resource "aws_vpc" "vpc" {
-  cidr_block = var.cidr_blocks[0].cidr_block
+resource "aws_vpc" "test-vpc" {
+  cidr_block = var.vpc_cidr_block
   tags = {
-    Name = var.cidr_blocks[0].name
+    Name = "${var.env_prefix}-vpc"
   }
 }
 
 resource "aws_subnet" "dev-subnet" {
-  vpc_id            = aws_vpc.vpc.id
-  cidr_block        = var.cidr_blocks[1].cidr_block
-  availability_zone = "eu-west-3a"
+  vpc_id            = aws_vpc.test-vpc.id
+  cidr_block        = var.subnet_cidr_block
+  availability_zone = var.avail_zone
   tags = {
-    Name = var.cidr_blocks[1].name
+    Name = "${var.env_prefix}-subnet-1"
   }
 }
 
-data "aws_vpc" "existing-vpc" {
-  default = true
-  # tags = {
-  #   "Name" = "test-vpc"
-  # }
+
+resource "aws_route_table" "test-rt" {
+  vpc_id = aws_vpc.test-vpc.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.test-igw.id
+  }
+  tags = {
+    Name = "${var.env_prefix}-rt"
+  }
 }
 
-resource "aws_subnet" "dev-subnet-2" {
-  vpc_id            = data.aws_vpc.existing-vpc.id
-  cidr_block        = "172.31.48.0/20"
-  availability_zone = "eu-west-3b"
-
+// create aws internet gateway
+resource "aws_internet_gateway" "test-igw" {
+  vpc_id = aws_vpc.test-vpc.id
+  tags = {
+    Name = "${var.env_prefix}-igw"
+  }
 }
 
-output "vpc" {
-  value = aws_vpc.vpc.id
-  # arn = aws_vpc.vpc.arn
+
+resource "aws_route_table_association" "test-rt-assoc" {
+  route_table_id = aws_route_table.test-rt.id
+  subnet_id      = aws_subnet.dev-subnet.id
 }
 
-output "subnet" {
-  value = aws_subnet.dev-subnet-2.id
-  # arn = aws_subnet.dev-subnet-2.arn
-}
+# data "aws_vpc" "existing-vpc" {
+#   default = true
+#   # tags = {
+#   #   "Name" = "test-vpc"
+#   # }
+# }
+
+# resource "aws_subnet" "dev-subnet-2" {
+#   vpc_id            = data.aws_vpc.existing-vpc.id
+#   cidr_block        = "172.31.48.0/20"
+#   availability_zone = "eu-west-3b"
+
+# }
+
+# output "vpc" {
+#   value = aws_vpc.vpc.id
+#   # arn = aws_vpc.vpc.arn
+# }
+
+# output "subnet" {
+#   value = aws_subnet.dev-subnet-2.id
+#   # arn = aws_subnet.dev-subnet-2.arn
+# }
