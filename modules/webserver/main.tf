@@ -42,14 +42,14 @@ data "aws_ami" "latest_ami" {
 
 resource "aws_key_pair" "test-key" {
   key_name = "new-test-key"
-  public_key = file(var.public_key_location)
+  public_key = file("id-rsa.pub")
 }
 
 resource "aws_instance" "test-instance" {
   ami           =  data.aws_ami.latest_ami.id
   instance_type = var.instance_type
 
-  user_data = file(var.user_data_location)
+  user_data = file("user-data.sh")
 
   vpc_security_group_ids = [aws_security_group.test-sg.id]
   subnet_id     = var.subnet_id
